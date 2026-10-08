@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .database import engine, Base
 from . import models  # noqa
-from .routers import users, teachers, courses, rooms
+from .routers import users, teachers, courses, rooms, timetable
 
 Base.metadata.create_all(bind=engine)
 
@@ -24,6 +24,7 @@ app.include_router(users.router)
 app.include_router(teachers.router)
 app.include_router(courses.router)
 app.include_router(rooms.router)
+app.include_router(timetable.router)
 
 
 @app.get("/")
