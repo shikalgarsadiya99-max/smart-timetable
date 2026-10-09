@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Timetable Management System</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Login / registration -->
+  <section id="authView" class="auth-wrapper">
+    <div class="auth-card">
+      <h1>📅 Smart Timetable</h1>
+      <p class="subtitle">Sign in to manage your timetable</p>
+      <div class="tabs">
+        <button class="tab active" id="loginTab" type="button" onclick="switchTab('login')">Login</button>
+        <button class="tab" id="registerTab" type="button" onclick="switchTab('register')">Register</button>
+      </div>
+      <form id="loginForm">
+        <div class="form-group"><label for="loginUsername">Username</label><input type="text" id="loginUsername" required autocomplete="username"></div>
+        <div class="form-group"><label for="loginPassword">Password</label><input type="password" id="loginPassword" required autocomplete="current-password"></div>
+        <button type="submit" class="btn btn-primary" style="width:100%">Login</button>
+        <p class="error-msg" id="loginError"></p>
+      </form>
+      <form id="registerForm" class="hidden">
+        <div class="form-group"><label for="regEmail">Email</label><input type="email" id="regEmail" required autocomplete="email"></div>
+        <div class="form-group"><label for="regUsername">Username</label><input type="text" id="regUsername" required autocomplete="username"></div>
+        <div class="form-group"><label for="regPassword">Password</label><input type="password" id="regPassword" required minlength="4" autocomplete="new-password"></div>
+        <div class="form-group"><label for="regRole">Role</label><select id="regRole" required><option value="student">Student</option><option value="teacher">Teacher</option><option value="admin">Admin</option></select></div>
+        <button type="submit" class="btn btn-primary" style="width:100%">Register</button>
+        <p class="error-msg" id="registerError"></p>
+      </form>
+    </div>
+  </section>
+
+  <!-- Main application; the original separate HTML pages are consolidated into views -->
+  <div id="appView" class="layout hidden">
+    <aside class="sidebar">
+      <h2>📅 Smart Timetable</h2>
+      <nav>
+        <a href="#dashboard" data-view="dashboard" class="active">🏠 Dashboard</a>
+        <a href="#teachers" data-view="teachers">👨‍🏫 Teachers</a>
+        <a href="#courses" data-view="courses">📚 Courses</a>
+        <a href="#rooms" data-view="rooms">🏫 Rooms</a>
+        <a href="#timetable" data-view="timetable">🗓️ Timetable</a>
+        <a href="#logout" id="logoutLink" style="margin-top:24px;color:#fca5a5">🚪 Logout</a>
+      </nav>
+    </aside>
+    <main class="main-content">
+      <section id="dashboardView" class="page-view">
+        <div class="topbar"><h1>Welcome, <span id="userName">User</span> 👋</h1><div class="user-badge">Logged in as <strong id="userRole">user</strong></div></div>
+        <div class="stats-grid">
+          <div class="stat-card" data-go="teachers"><h3>Teachers</h3><p class="number" id="teacherCount">—</p></div>
+          <div class="stat-card" data-go="courses"><h3>Courses</h3><p class="number" id="courseCount">—</p></div>
+          <div class="stat-card" data-go="rooms"><h3>Rooms</h3><p class="number" id="roomCount">—</p></div>
+          <div class="stat-card" data-go="timetable"><h3>Timetable Entries</h3><p class="number" id="timetableCount">—</p></div>
+        </div>
+        <div class="card"><h2>Quick Actions</h2><p class="quick-copy">Start by adding teachers, then courses and rooms, then generate your timetable.</p><button class="btn btn-primary" data-go="timetable">⚡ Auto-Generate Timetable</button></div>
+      </section>
+
+      <section id="teachersView" class="page-view hidden">
+        <div class="topbar"><h1>👨‍🏫 Manage Teachers</h1></div>
+        <div class="card">
+          <h2>Add New Teacher</h2>
+          <form id="teacherForm">
+            <div class="form-row">
+              <div class="form-group"><label for="tName">Name</label><input type="text" id="tName" required></div>
+              <div class="form-group"><label for="tEmail">Email</label><input type="email" id="tEmail" required></div>
+              <div class="form-group"><label for="tDept">Department</label><input type="text" id="tDept" required></div>
+              <div class="form-group"><label for="tType">Type</label><select id="tType" onchange="toggleOrgField()"><option value="internal">Internal</option><option value="external">External</option></select></div>
+              <div class="form-group"><label for="tWorkload">Max Workload</label><input type="number" id="tWorkload" value="18" min="1" required></div>
+              <div class="form-group hidden" id="orgGroup"><label for="tOrg">Organization</label><input type="text" id="tOrg"></div>
+            </div>
+            <button type="submit" class="btn btn-primary">Add Teacher</button><p class="error-msg" id="teacherError"></p>
+          </form>
+        </div>
+        <div class="card"><h2>All Teachers</h2><div style="overflow-x:auto"><table id="teachersTable"><thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Department</th><th>Type</th><th>Workload</th><th>Actions</th></tr></thead><tbody id="teachersBody"><tr><td colspan="7" class="no-data">Loading...</td></tr></tbody></table></div></div>
+      </section>
+
+      <section id="coursesView" class="page-view hidden">
+        <div class="topbar"><h1>📚 Manage Courses</h1></div>
+        <div class="card"><h2>Add New Course</h2>
+          <form id="courseForm"><div class="form-row">
+            <div class="form-group"><label for="cName">Course Name</label><input type="text" id="cName" required></div>
+            <div class="form-group"><label for="cCode">Course Code</label><input type="text" id="cCode" required></div>
+            <div class="form-group"><label for="cCredits">Credits</label><input type="number" id="cCredits" value="3" min="1" max="10" required></div>
+            <div class="form-group"><label for="cTeacher">Teacher</label><select id="cTeacher" required></select></div>
+            <div class="form-group"><label for="cSemester">Semester</label><input type="number" id="cSemester" value="1" min="1" max="8" required></div>
+            <div class="form-group"><label for="cDept">Department</label><input type="text" id="cDept" required></div>
+            <div class="form-group"><label for="cClass">Class</label><input type="text" id="cClass" placeholder="e.g., SY-A" required></div>
+          </div><button type="submit" class="btn btn-primary">Add Course</button><p class="error-msg" id="courseError"></p></form>
+        </div>
+        <div class="card"><h2>All Courses</h2><div style="overflow-x:auto"><table><thead><tr><th>ID</th><th>Code</th><th>Name</th><th>Credits</th><th>Teacher</th><th>Class</th><th>Dept</th><th>Actions</th></tr></thead><tbody id="coursesBody"><tr><td colspan="8" class="no-data">Loading...</td></tr></tbody></table></div></div>
+      </section>
+
+      <section id="roomsView" class="page-view hidden">
+        <div class="topbar"><h1>🏫 Manage Rooms</h1></div>
+        <div class="card"><h2>Add New Room</h2><form id="roomForm"><div class="form-row">
+          <div class="form-group"><label for="rName">Room Name</label><input type="text" id="rName" placeholder="e.g., A-101" required></div>
+          <div class="form-group"><label for="rCapacity">Capacity</label><input type="number" id="rCapacity" value="60" min="1" required></div>
+          <div class="form-group"><label for="rType">Type</label><select id="rType"><option value="classroom">Classroom</option><option value="lab">Laboratory</option></select></div>
+        </div><button type="submit" class="btn btn-primary">Add Room</button><p class="error-msg" id="roomError"></p></form></div>
+        <div class="card"><h2>All Rooms</h2><div class="room-grid" id="roomsGrid"><p class="no-data">Loading...</p></div></div>
+      </section>
+
+      <section id="timetableView" class="page-view hidden">
+        <div class="topbar"><h1>🗓️ Weekly Timetable</h1><button class="btn btn-success" id="genBtn" onclick="autoGenerate()">⚡ Auto-Generate Timetable</button></div>
+        <p id="genMessage" style="margin-bottom:16px;color:#16a34a;font-weight:600"></p>
+        <div class="timetable-wrapper"><table class="timetable-table"><thead><tr><th>Time</th><th>Monday</th><th>Tuesday</th><th>Wednesday</th><th>Thursday</th><th>Friday</th></tr></thead><tbody id="timetableBody"><tr><td colspan="6" class="no-data">Loading timetable...</td></tr></tbody></table></div>
+      </section>
+    </main>
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>
