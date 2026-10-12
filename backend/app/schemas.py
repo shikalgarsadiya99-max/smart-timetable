@@ -2,7 +2,7 @@ from pydantic import BaseModel, EmailStr
 from typing import Optional
 
 
-# ---------- USER ----------
+# ========== USER ==========
 class UserCreate(BaseModel):
     email: EmailStr
     username: str
@@ -20,11 +20,12 @@ class UserResponse(BaseModel):
     email: str
     username: str
     role: str
+
     class Config:
         from_attributes = True
 
 
-# ---------- TEACHER ----------
+# ========== TEACHER ==========
 class TeacherCreate(BaseModel):
     name: str
     email: EmailStr
@@ -42,11 +43,12 @@ class TeacherResponse(BaseModel):
     type: str
     max_workload: int
     organization: str
+
     class Config:
         from_attributes = True
 
 
-# ---------- COURSE ----------
+# ========== COURSE ==========
 class CourseCreate(BaseModel):
     name: str
     code: str
@@ -66,11 +68,12 @@ class CourseResponse(BaseModel):
     semester: int
     department: str
     class_name: str
+
     class Config:
         from_attributes = True
 
 
-# ---------- ROOM ----------
+# ========== ROOM ==========
 class RoomCreate(BaseModel):
     name: str
     capacity: int
@@ -82,11 +85,12 @@ class RoomResponse(BaseModel):
     name: str
     capacity: int
     type: str
+
     class Config:
         from_attributes = True
 
 
-# ---------- TIMETABLE ----------
+# ========== TIMETABLE ==========
 class TimetableCreate(BaseModel):
     course_id: int
     teacher_id: int
@@ -105,6 +109,8 @@ class TimetableResponse(BaseModel):
     start_time: str
     end_time: str
     status: str
+    is_locked: int = 0
+
     class Config:
         from_attributes = True
 
@@ -115,3 +121,7 @@ class TimetableUpdate(BaseModel):
     end_time: Optional[str] = None
     room_id: Optional[int] = None
     status: Optional[str] = None
+
+
+class TimetableLock(BaseModel):
+    is_locked: int

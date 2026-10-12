@@ -7,7 +7,6 @@ from ..database import get_db
 router = APIRouter(prefix="/api/timetable", tags=["timetable"])
 
 
-# ----- Configuration (could be moved to DB later) -----
 DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
 SLOTS = [
     ("09:00", "10:00"),
@@ -20,39 +19,30 @@ SLOTS = [
 ]
 
 
-# ----- Helper: Check if a slot is free -----
 def is_slot_available(db, day, start_time, teacher_id, room_id, class_name, exclude_id=None):
-    """Returns True if the given slot has NO conflicts."""
     query = db.query(models.TimetableEntry).filter(
         models.TimetableEntry.day == day,
         models.TimetableEntry.start_time == start_time
     )
     if exclude_id is not None:
         query = query.filter(models.TimetableEntry.id != exclude_id)
-
     for entry in query.all():
-        # Teacher conflict
         if entry.teacher_id == teacher_id:
             return False
-        # Room conflict
         if entry.room_id == room_id:
             return False
-        # Class conflict
         course = db.query(models.Course).get(entry.course_id)
         if course and course.class_name == class_name:
             return False
-
     return True
 
 
-# ----- GET all timetable entries -----
 @router.get("/", response_model=List[schemas.TimetableResponse])
 def get_all(db: Session = Depends(get_db),
             user: models.User = Depends(auth.get_current_user)):
     return db.query(models.TimetableEntry).all()
 
 
-# ----- GET entries for a specific class -----
 @router.get("/class/{class_name}", response_model=List[schemas.TimetableResponse])
 def get_by_class(class_name: str, db: Session = Depends(get_db),
                  user: models.User = Depends(auth.get_current_user)):
@@ -63,49 +53,65 @@ def get_by_class(class_name: str, db: Session = Depends(get_db),
     ).all()
 
 
-# ----- CSP-based auto-generation -----
 @router.post("/auto-generate")
 def auto_generate(db: Session = Depends(get_db),
                   user: models.User = Depends(auth.get_current_admin)):
-    """
-    Generate timetable automatically using constraint-based scheduling.
-    Clears previous timetable and creates a new one.
-    """
-    # Clear previous timetable
-    db.query(models.TimetableEntry).delete()
+    """Generate timetable - each course appears credits times per week."""
+    
+    # Delete only UNLOCKED entries
+    db.query(models.TimetableEntry).filter(
+        models.TimetableEntry.is_locked != 1
+    ).delete()
     db.commit()
-
+    
     courses = db.query(models.Course).all()
     rooms = db.query(models.Room).all()
 
     if not courses:
-        raise HTTPException(400, "No courses found. Add courses first.")
+        raise HTTPException(400, "No courses found")
     if not rooms:
-        raise HTTPException(400, "No rooms found. Add rooms first.")
+        raise HTTPException(400, "No rooms found")
 
-    # Track used slots globally
-    used_teacher = set()   # (day, start, teacher_id)
-    used_room = set()      # (day, start, room_id)
-    used_class = set()     # (day, start, class_name)
+    # Get locked entries and reserve their slots
+    locked_entries = db.query(models.TimetableEntry).filter(
+        models.TimetableEntry.is_locked == 1
+    ).all()
+    
+    used_teacher = set()
+    used_room = set()
+    used_class = set()
+    
+    for e in locked_entries:
+        used_teacher.add((e.day, e.start_time, e.teacher_id))
+        used_room.add((e.day, e.start_time, e.room_id))
+        course = db.query(models.Course).get(e.course_id)
+        if course:
+            used_class.add((e.day, e.start_time, course.class_name))
 
     created = []
     unplaced = []
     room_idx = 0
 
+    # Each course placed 'credits' times per week
     for course in courses:
-        placed = False
+        sessions_needed = course.credits if course.credits and course.credits > 0 else 1
+        sessions_placed = 0
+        days_used_for_course = set()
+        
         for day in DAYS:
-            if placed:
+            if sessions_placed >= sessions_needed:
                 break
+            if day in days_used_for_course:
+                continue
+            
+            placed_this_day = False
             for (start, end) in SLOTS:
                 tkey = (day, start, course.teacher_id)
                 ckey = (day, start, course.class_name)
 
-                # Skip if teacher or class busy
                 if tkey in used_teacher or ckey in used_class:
                     continue
 
-                # Find an available room with sufficient capacity
                 chosen_room = None
                 for i in range(len(rooms)):
                     r = rooms[(room_idx + i) % len(rooms)]
@@ -118,7 +124,6 @@ def auto_generate(db: Session = Depends(get_db),
                 if chosen_room is None:
                     continue
 
-                # Assign
                 entry = models.TimetableEntry(
                     course_id=course.id,
                     teacher_id=course.teacher_id,
@@ -126,18 +131,24 @@ def auto_generate(db: Session = Depends(get_db),
                     day=day,
                     start_time=start,
                     end_time=end,
-                    status="confirmed"
+                    status="confirmed",
+                    is_locked=0
                 )
                 db.add(entry)
                 used_teacher.add(tkey)
                 used_room.add((day, start, chosen_room.id))
                 used_class.add(ckey)
                 created.append(entry)
-                placed = True
+                sessions_placed += 1
+                days_used_for_course.add(day)
+                placed_this_day = True
                 break
+            
+            if not placed_this_day:
+                continue
 
-        if not placed:
-            unplaced.append(course.code)
+        if sessions_placed < sessions_needed:
+            unplaced.append(f"{course.code} ({sessions_placed}/{sessions_needed})")
 
     db.commit()
 
@@ -145,23 +156,21 @@ def auto_generate(db: Session = Depends(get_db),
         "message": "Timetable generated successfully",
         "total_courses": len(courses),
         "placed": len(created),
+        "locked_preserved": len(locked_entries),
         "unplaced": unplaced,
         "unplaced_count": len(unplaced)
     }
 
 
-# ----- Manual slot change -----
 @router.put("/{entry_id}", response_model=schemas.TimetableResponse)
 def update_entry(entry_id: int,
                  data: schemas.TimetableUpdate,
                  db: Session = Depends(get_db),
                  user: models.User = Depends(auth.get_current_admin)):
-    """Move an entry to a new day/time/room with conflict validation."""
     entry = db.query(models.TimetableEntry).get(entry_id)
     if not entry:
         raise HTTPException(404, "Entry not found")
 
-    # Apply changes
     if data.day:
         entry.day = data.day
     if data.start_time:
@@ -173,7 +182,6 @@ def update_entry(entry_id: int,
     if data.status:
         entry.status = data.status
 
-    # Validate conflicts
     course = db.query(models.Course).get(entry.course_id)
     class_name = course.class_name if course else ""
 
@@ -181,14 +189,27 @@ def update_entry(entry_id: int,
                              entry.teacher_id, entry.room_id,
                              class_name, entry.id):
         db.rollback()
-        raise HTTPException(400, "Conflict: teacher, room, or class already busy at that slot")
+        raise HTTPException(400, "Conflict: slot busy")
 
     db.commit()
     db.refresh(entry)
     return entry
 
 
-# ----- Delete entry -----
+@router.put("/{entry_id}/lock")
+def toggle_lock(entry_id: int,
+                data: schemas.TimetableLock,
+                db: Session = Depends(get_db),
+                user: models.User = Depends(auth.get_current_admin)):
+    entry = db.query(models.TimetableEntry).get(entry_id)
+    if not entry:
+        raise HTTPException(404, "Entry not found")
+    entry.is_locked = data.is_locked
+    db.commit()
+    db.refresh(entry)
+    return entry
+
+
 @router.delete("/{entry_id}")
 def delete_entry(entry_id: int,
                  db: Session = Depends(get_db),
@@ -201,7 +222,6 @@ def delete_entry(entry_id: int,
     return {"message": "Entry deleted"}
 
 
-# ----- Clear all -----
 @router.delete("/clear/all")
 def clear_all(db: Session = Depends(get_db),
               user: models.User = Depends(auth.get_current_admin)):

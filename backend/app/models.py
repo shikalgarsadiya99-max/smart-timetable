@@ -8,7 +8,7 @@ class User(Base):
     email = Column(String, unique=True, index=True)
     username = Column(String, unique=True, index=True)
     hashed_password = Column(String)
-    role = Column(String, default="student")  # admin, teacher, student
+    role = Column(String, default="student")
 
 
 class Teacher(Base):
@@ -17,9 +17,9 @@ class Teacher(Base):
     name = Column(String)
     email = Column(String, unique=True)
     department = Column(String)
-    type = Column(String, default="internal")       # internal / external
+    type = Column(String, default="internal")
     max_workload = Column(Integer, default=18)
-    organization = Column(String, default="")        # for external faculty
+    organization = Column(String, default="")
 
 
 class Course(Base):
@@ -30,8 +30,8 @@ class Course(Base):
     credits = Column(Integer, default=3)
     teacher_id = Column(Integer, ForeignKey("teachers.id"))
     semester = Column(Integer)
-    department = Column(String)                      # AI-ML, CS, IT
-    class_name = Column(String)                      # FY-A, SY-B
+    department = Column(String)
+    class_name = Column(String)
 
 
 class Room(Base):
@@ -39,7 +39,7 @@ class Room(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True)
     capacity = Column(Integer)
-    type = Column(String, default="classroom")       # classroom / lab
+    type = Column(String, default="classroom")
 
 
 class TimetableEntry(Base):
@@ -51,4 +51,5 @@ class TimetableEntry(Base):
     day = Column(String)
     start_time = Column(String)
     end_time = Column(String)
-    status = Column(String, default="confirmed")     # confirmed / pending
+    status = Column(String, default="confirmed")
+    is_locked = Column(Integer, default=0)
