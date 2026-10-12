@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Timetable — Smart Timetable</title>
+    <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+    <div class="layout">
+        <aside class="sidebar">
+            <h2>📅 Smart Timetable</h2>
+            <nav>
+                <a href="dashboard.html">🏠 Dashboard</a>
+                <a href="teachers.html">👨‍🏫 Teachers</a>
+                <a href="courses.html">📚 Courses</a>
+                <a href="rooms.html">🏫 Rooms</a>
+                <a href="timetable.html" class="active">🗓️ Timetable</a>
+                <a href="#" onclick="logout(); return false;" style="margin-top: 24px; color: #dc2626;">🚪 Logout</a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <div class="topbar">
+                <h1>Weekly Timetable</h1>
+                <button class="btn btn-success" onclick="autoGenerate()" id="genBtn">
+                    ⚡ Auto-Generate
+                </button>
+            </div>
+
+            <div id="genMessage"></div>
+
+            <div class="timetable-wrapper">
+                <table class="timetable-table">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Monday</th>
+                            <th>Tuesday</th>
+                            <th>Wednesday</th>
+                            <th>Thursday</th>
+                            <th>Friday</th>
+                        </tr>
+                    </thead>
+                    <tbody id="timetableBody">
+                        <tr><td colspan="6" class="no-data">Loading timetable...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p style="margin-top: 16px; font-size: 13px; color: #64748b; text-align: center;">
+                🔒 Locked slots stay fixed when you regenerate. Click the lock icon to toggle.
+            </p>
+        </main>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/timetable.js"></script>
+</body>
+</html>
