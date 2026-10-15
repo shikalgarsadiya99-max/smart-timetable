@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr
-from typing import Optional
+from typing import Optional, List
 
 
 # ========== USER ==========
@@ -7,12 +7,18 @@ class UserCreate(BaseModel):
     email: EmailStr
     username: str
     password: str
-    role: Optional[str] = "student"
+    role: str = "student"
+    int_password: int
+    department: Optional[str] = None
+    semester: Optional[int] = None
+    division: Optional[str] = None
+    batch: Optional[str] = None
 
 
 class UserLogin(BaseModel):
     username: str
     password: str
+    int_password: int
 
 
 class UserResponse(BaseModel):
@@ -20,6 +26,10 @@ class UserResponse(BaseModel):
     email: str
     username: str
     role: str
+    department: Optional[str] = None
+    semester: Optional[int] = None
+    division: Optional[str] = None
+    batch: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -57,6 +67,7 @@ class CourseCreate(BaseModel):
     semester: int
     department: str
     class_name: str
+    course_type: Optional[str] = "theory"
 
 
 class CourseResponse(BaseModel):
@@ -68,6 +79,7 @@ class CourseResponse(BaseModel):
     semester: int
     department: str
     class_name: str
+    course_type: str
 
     class Config:
         from_attributes = True
@@ -98,6 +110,7 @@ class TimetableCreate(BaseModel):
     day: str
     start_time: str
     end_time: str
+    batch: Optional[str] = None
 
 
 class TimetableResponse(BaseModel):
@@ -110,6 +123,8 @@ class TimetableResponse(BaseModel):
     end_time: str
     status: str
     is_locked: int = 0
+    batch: Optional[str] = None
+    semester_label: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -125,3 +140,71 @@ class TimetableUpdate(BaseModel):
 
 class TimetableLock(BaseModel):
     is_locked: int
+
+
+# ========== DIVISION ==========
+class DivisionCreate(BaseModel):
+    name: str
+    department: str
+    semester: int
+    classroom: Optional[str] = None
+    total_students: Optional[int] = 60
+
+
+class DivisionResponse(BaseModel):
+    id: int
+    name: str
+    department: str
+    semester: int
+    classroom: Optional[str] = None
+    total_students: int
+
+    class Config:
+        from_attributes = True
+
+
+# ========== BATCH ==========
+class BatchCreate(BaseModel):
+    name: str
+    division_id: int
+
+
+class BatchResponse(BaseModel):
+    id: int
+    name: str
+    division_id: int
+
+    class Config:
+        from_attributes = True
+
+
+# ========== CONSTRAINT ==========
+class ConstraintCreate(BaseModel):
+    course_code: str
+    day: str
+    start_time: str
+    end_time: str
+    is_active: Optional[int] = 1
+
+
+class ConstraintResponse(BaseModel):
+    id: int
+    course_code: str
+    day: str
+    start_time: str
+    end_time: str
+    is_active: int
+
+    class Config:
+        from_attributes = True
+
+
+# ========== ARCHIVE ==========
+class ArchivedTimetableResponse(BaseModel):
+    id: int
+    semester_label: str
+    data: str
+    created_at: str
+
+    class Config:
+        from_attributes = True
