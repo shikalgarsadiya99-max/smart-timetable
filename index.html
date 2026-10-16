@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart Timetable Management System</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ============ LOGIN / REGISTER ============ -->
+<div id="authScreen" class="auth-wrapper">
+  <div class="auth-card">
+    <h1>📅 Smart Timetable</h1>
+    <p class="subtitle">Sign in to manage your timetable</p>
+
+    <div class="tabs">
+      <button class="tab active" id="loginTab" onclick="switchAuthTab('login')">Login</button>
+      <button class="tab" id="registerTab" onclick="switchAuthTab('register')">Register</button>
+    </div>
+
+    <form id="loginForm">
+      <div class="form-group">
+        <label>Username</label>
+        <input type="text" id="loginUsername" required>
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="loginPassword" required>
+      </div>
+      <div class="form-group">
+        <label>Admin Password (Integer)</label>
+        <input type="number" id="loginIntPassword" placeholder="e.g. 1234" required>
+      </div>
+      <button type="submit" class="btn btn-primary">Login</button>
+      <p class="error-msg" id="loginError"></p>
+    </form>
+
+    <form id="registerForm" class="hidden">
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="regEmail" required>
+      </div>
+      <div class="form-group">
+        <label>Username</label>
+        <input type="text" id="regUsername" required>
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="regPassword" required minlength="4">
+      </div>
+      <div class="form-group">
+        <label>Role</label>
+        <select id="regRole" onchange="toggleRoleFields()" required>
+          <option value="student">Student</option>
+          <option value="teacher">Teacher</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Admin Integer Password</label>
+        <input type="number" id="regIntPassword" placeholder="e.g. 1234" required>
+        <small id="intPasswordHint"></small>
+      </div>
+      <div id="studentFields" class="hidden">
+        <div class="form-group">
+          <label>Department</label>
+          <select id="regDept" onchange="loadDivisionsForReg()">
+            <option value="">Select Department</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Semester</label>
+          <select id="regSemester" onchange="loadDivisionsForReg()">
+            <option value="">Select</option>
+            <option>1</option><option>2</option><option>3</option><option>4</option>
+            <option>5</option><option>6</option><option>7</option><option>8</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Division</label>
+          <select id="regDivision" onchange="loadBatchesForReg()">
+            <option value="">Select</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Batch</label>
+          <select id="regBatch">
+            <option value="">Select</option>
+          </select>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary">Register</button>
+      <p class="error-msg" id="registerError"></p>
+    </form>
+  </div>
+</div>
+
+<!-- ============ MAIN APP ============ -->
+<div id="appScreen" class="layout hidden">
+  <aside class="sidebar">
+    <div class="brand">📅 Smart Timetable</div>
+    <nav id="sidebarNav"></nav>
+  </aside>
+  <main class="main-content">
+    <div class="topbar">
+      <h1 id="pageTitle">Dashboard</h1>
+      <div class="user-badge">
+        <span id="userInfo">—</span>
+        <button class="btn-mini" onclick="logout()">Logout</button>
+      </div>
+    </div>
+    <div id="content"></div>
+  </main>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

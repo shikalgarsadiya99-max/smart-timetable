@@ -36,6 +36,16 @@ function toggleRoleFields(){
   $("intPasswordHint").textContent=r==="admin"?"Choose a unique number":r==="teacher"?"Enter admin password":"Enter your college admin password";
 }
 
+async function loadRegDepartments(){
+  try{
+    const depts=await api("/api/departments/");
+    const sel=$("regDept");
+    if(!sel)return;
+    sel.innerHTML='<option value="">Select Department</option>'+
+      depts.map(d=>`<option value="${d.code}">${d.name}</option>`).join("");
+  }catch(e){}
+}
+
 async function loadDivisionsForReg(){
   const d=$("regDept").value,s=$("regSemester").value,sel=$("regDivision");
   $("regBatch").innerHTML='<option value="">Select</option>';
@@ -124,9 +134,16 @@ function navigate(route){
 function buildNav(){
   const u=getUser();if(!u)return;
   const links=u.role==="admin"?[
-    ["dashboard","🏠 Dashboard"],["teachers","👨‍🏫 Teachers"],["courses","📚 Courses"],
-    ["rooms","🏫 Rooms"],["divisions","🏛️ Divisions"],["batches","👥 Batches"],
-    ["constraints","⚙️ Constraints"],["timetable","🗓️ Timetable"],["profile","👤 Profile"]
+    ["dashboard","🏠 Dashboard"],
+    ["departments","🏢 Departments"],
+    ["divisions","🏛️ Divisions"],
+    ["batches","👥 Batches"],
+    ["teachers","👨‍🏫 Teachers"],
+    ["courses","📚 Courses"],
+    ["rooms","🏫 Rooms"],
+    ["constraints","⚙️ Constraints"],
+    ["timetable","🗓️ Timetable"],
+    ["profile","👤 Profile"]
   ]:u.role==="teacher"?[
     ["teacherSchedule","🗓️ My Schedule"],["profile","👤 Profile"]
   ]:[
@@ -137,15 +154,57 @@ function buildNav(){
   $("userInfo").innerHTML=`<strong>${u.username}</strong> (${u.role})`;
 }
 
-/* ============ PAGES ============ */
+/* ============ DEPARTMENTS ============ */
+ROUTES.departments=async()=>{
+  $("pageTitle").textContent="Manage Departments";
+  $("content").innerHTML=`
+    <div class="card"><h2>Add New Department</h2>
+      <form id="depForm"><div class="form-row">
+        <div class="form-group"><label>Name</label><input id="depName" placeholder="Computer Science" required></div>
+        <div class="form-group"><label>Code</label><input id="depCode" placeholder="CS" required></div>
+        <div class="form-group"><label>HOD</label><input id="depHod" placeholder="Dr. Patil"></div>
+      </div><button class="btn btn-primary" style="width:auto;margin-top:12px">Add Department</button>
+      <p class="error-msg" id="depErr"></p></form></div>
+    <div class="card"><h2>All Departments</h2><div id="depList"></div></div>`;
+  $("depForm").onsubmit=async e=>{
+    e.preventDefault();
+    try{
+      await api("/api/departments/","POST",{
+        name:$("depName").value,
+        code:$("depCode").value,
+        hod:$("depHod").value||null
+      });
+      e.target.reset();loadDep();
+    }catch(err){$("depErr").textContent=err.message}
+  };
+  loadDep();
+};
+
+async function loadDep(){
+  try{
+    const d=await api("/api/departments/");
+    $("depList").innerHTML=d.length?`<table><thead><tr><th>ID</th><th>Name</th><th>Code</th><th>HOD</th><th>Action</th></tr></thead><tbody>
+      ${d.map(x=>`<tr><td>${x.id}</td><td><strong>${x.name}</strong></td><td>${x.code}</td><td>${x.hod||"—"}</td>
+        <td><button class="btn btn-danger" onclick="delDep(${x.id})">Delete</button></td></tr>`).join("")}
+      </tbody></table>`:'<p class="no-data">No departments yet</p>';
+  }catch(e){$("depList").innerHTML=`<p class="no-data">${e.message}</p>`}
+}
+
+window.delDep=async id=>{
+  if(!confirm("Delete this department?"))return;
+  await api(`/api/departments/${id}`,"DELETE");
+  loadDep();
+};
+
+/* ============ DASHBOARD ============ */
 ROUTES.dashboard=async()=>{
   $("pageTitle").textContent="Dashboard";
   const c=$("content");
   c.innerHTML=`<div class="stats-grid" id="statsGrid"></div>
     <div class="card"><h2>Quick Actions</h2>
-    <p style="color:#64748b;margin-bottom:14px">Add divisions → teachers → courses → rooms → generate timetable.</p>
+    <p style="color:#6b7280;margin-bottom:14px">Add Departments → Divisions → Batches → Teachers → Courses → Rooms → Generate Timetable.</p>
     <div class="actions">
-      <button class="btn btn-primary" style="width:auto" onclick="navigate('divisions')">Manage Divisions</button>
+      <button class="btn btn-primary" style="width:auto" onclick="navigate('departments')">🏢 Manage Departments</button>
       <button class="btn btn-success" style="width:auto" onclick="navigate('timetable')">⚡ Generate Timetable</button>
     </div></div>`;
   try{
@@ -162,10 +221,10 @@ ROUTES.dashboard=async()=>{
 };
 const card=(label,val)=>`<div class="stat-card"><h3>${label}</h3><p class="number">${val}</p></div>`;
 
+/* ============ TEACHERS ============ */
 ROUTES.teachers=async()=>{
   $("pageTitle").textContent="Manage Teachers";
-  const c=$("content");
-  c.innerHTML=`
+  $("content").innerHTML=`
     <div class="card"><h2>Add New Teacher</h2>
       <form id="tForm"><div class="form-row">
         <div class="form-group"><label>Name</label><input id="tName" required></div>
@@ -200,11 +259,11 @@ async function loadTeachers(){
 }
 window.delTeacher=async id=>{if(!confirm("Delete?"))return;await api(`/api/teachers/${id}`,"DELETE");loadTeachers()};
 
+/* ============ COURSES ============ */
 ROUTES.courses=async()=>{
   $("pageTitle").textContent="Manage Courses";
-  const c=$("content");
   const teachers=await api("/api/teachers/").catch(()=>[]);
-  c.innerHTML=`
+  $("content").innerHTML=`
     <div class="card"><h2>Add New Course</h2>
       <form id="cForm"><div class="form-row">
         <div class="form-group"><label>Name</label><input id="cName" required></div>
@@ -244,6 +303,7 @@ async function loadCourses(){
 }
 window.delCourse=async id=>{if(!confirm("Delete?"))return;await api(`/api/courses/${id}`,"DELETE");loadCourses()};
 
+/* ============ ROOMS ============ */
 ROUTES.rooms=async()=>{
   $("pageTitle").textContent="Manage Rooms";
   $("content").innerHTML=`
@@ -268,9 +328,9 @@ async function loadRooms(){
   try{
     const r=await api("/api/rooms/");
     $("rList").innerHTML=r.length?`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px">
-      ${r.map(x=>`<div class="card" style="margin:0;border-left:4px solid var(--primary)">
+      ${r.map(x=>`<div class="card" style="margin:0;border-left:4px solid #5c6bc0">
         <h3 style="margin-bottom:6px">${x.name}</h3>
-        <p style="color:#64748b;font-size:13px">Capacity: ${x.capacity}</p>
+        <p style="color:#6b7280;font-size:13px">Capacity: ${x.capacity}</p>
         <span class="badge">${x.type}</span>
         <button class="btn btn-danger" style="margin-top:10px" onclick="delRoom(${x.id})">Delete</button></div>`).join("")}
       </div>`:'<p class="no-data">No rooms yet</p>';
@@ -278,13 +338,19 @@ async function loadRooms(){
 }
 window.delRoom=async id=>{if(!confirm("Delete?"))return;await api(`/api/rooms/${id}`,"DELETE");loadRooms()};
 
+/* ============ DIVISIONS ============ */
 ROUTES.divisions=async()=>{
   $("pageTitle").textContent="Manage Divisions";
+  const depts=await api("/api/departments/").catch(()=>[]);
+  const deptOptions=depts.length
+    ? depts.map(d=>`<option value="${d.code}">${d.name} (${d.code})</option>`).join("")
+    : '<option value="">No departments — add one first</option>';
   $("content").innerHTML=`
     <div class="card"><h2>Add New Division</h2>
+    ${!depts.length ? '<p style="color:#c62828;font-weight:600">⚠️ Please add a Department first!</p>' : ''}
       <form id="dForm"><div class="form-row">
         <div class="form-group"><label>Name</label><input id="dName" placeholder="SY-A" required></div>
-        <div class="form-group"><label>Department</label><select id="dDept"><option>CS</option><option>AI-ML</option><option>IT</option></select></div>
+        <div class="form-group"><label>Department</label><select id="dDept">${deptOptions}</select></div>
         <div class="form-group"><label>Semester</label><input type="number" id="dSem" value="3"></div>
         <div class="form-group"><label>Classroom</label><input id="dRoom" placeholder="CSMCR-1"></div>
         <div class="form-group"><label>Students</label><input type="number" id="dStud" value="60"></div>
@@ -315,6 +381,7 @@ async function loadDivs(){
 }
 window.delDiv=async id=>{if(!confirm("Delete?"))return;await api(`/api/divisions/${id}`,"DELETE");loadDivs()};
 
+/* ============ BATCHES ============ */
 ROUTES.batches=async()=>{
   $("pageTitle").textContent="Manage Batches";
   const divs=await api("/api/divisions/").catch(()=>[]);
@@ -330,7 +397,7 @@ ROUTES.batches=async()=>{
     e.preventDefault();
     try{
       await api("/api/batches/","POST",{name:$("bName").value,division_id:parseInt($("bDiv").value)});
-      e.target.reset();loadBats();
+      e.target.reset();loadBats(divs);
     }catch(err){$("bErr").textContent=err.message}
   };
   loadBats(divs);
@@ -348,11 +415,12 @@ async function loadBats(divs){
 }
 window.delBat=async id=>{if(!confirm("Delete?"))return;await api(`/api/batches/${id}`,"DELETE");loadBats()};
 
+/* ============ CONSTRAINTS ============ */
 ROUTES.constraints=async()=>{
   $("pageTitle").textContent="Manage Constraints";
   $("content").innerHTML=`
     <div class="card"><h2>Add Fixed Slot Constraint</h2>
-      <p style="color:#64748b;font-size:13px;margin-bottom:12px">Force a course to always appear at a specific time.</p>
+      <p style="color:#6b7280;font-size:13px;margin-bottom:12px">Force a course to always appear at a specific time.</p>
       <form id="csForm"><div class="form-row">
         <div class="form-group"><label>Course Code</label><input id="csCode" placeholder="T&P" required></div>
         <div class="form-group"><label>Day</label><select id="csDay">${DAYS.map(d=>`<option>${d}</option>`).join("")}</select></div>
@@ -405,8 +473,8 @@ async function buildTimetableHTML(isAdmin){
   ];
 
   const rendered = new Set();
-
   let rows = "";
+
   for (let i = 0; i < SLOTS2.length; i++) {
     const slot = SLOTS2[i];
     const cells = [];
@@ -475,7 +543,7 @@ window.autoGenerate=async()=>{
   const btn=$("genBtn");btn.disabled=true;btn.textContent="Generating...";
   try{
     const r=await api("/api/timetable/auto-generate","POST");
-    $("genMsg").innerHTML=`<div class="msg-success">✅ ${r.message} — Placed ${r.placed}/${r.total_courses} courses. ${r.unplaced_count>0?'⚠️ Unplaced: '+r.unplaced.join(', '):''}</div>`;
+    $("genMsg").innerHTML=`<div class="msg-success">✅ ${r.message} — Placed ${r.placed}/${r.total_courses} courses.${r.unplaced_count>0?' ⚠️ Unplaced: '+r.unplaced.join(', '):''}</div>`;
     $("ttBody").innerHTML=await buildTimetableHTML(true);
   }catch(e){$("genMsg").innerHTML=`<div class="msg-error">❌ ${e.message}</div>`}
   finally{btn.disabled=false;btn.textContent="⚡ Auto-Generate Timetable"}
@@ -492,12 +560,13 @@ window.downloadPDF=async()=>{
   }catch(e){alert("PDF download failed: "+e.message)}
 };
 
+/* ============ STUDENT / TEACHER ============ */
 ROUTES.studentTimetable=async()=>{
   $("pageTitle").textContent="My Timetable";
   const u=getUser();
   $("content").innerHTML=`<div class="card" style="margin-bottom:16px">
     <h2>👤 ${u.username}</h2>
-    <p style="color:#64748b;font-size:13px">${u.department||"—"} · Semester ${u.semester||"—"} · ${u.division||"—"} · Batch ${u.batch||"—"}</p>
+    <p style="color:#6b7280;font-size:13px">${u.department||"—"} · Semester ${u.semester||"—"} · ${u.division||"—"} · Batch ${u.batch||"—"}</p>
   </div><div id="ttBody"><p class="no-data">Loading...</p></div>`;
   try{$("ttBody").innerHTML=await buildTimetableHTML(false)}
   catch(e){$("ttBody").innerHTML=`<p class="no-data">${e.message}</p>`}
@@ -508,12 +577,13 @@ ROUTES.teacherSchedule=async()=>{
   const u=getUser();
   $("content").innerHTML=`<div class="card" style="margin-bottom:16px">
     <h2>👨‍🏫 ${u.username}</h2>
-    <p style="color:#64748b;font-size:13px">Role: Teacher</p>
+    <p style="color:#6b7280;font-size:13px">Role: Teacher</p>
   </div><div id="ttBody"><p class="no-data">Loading...</p></div>`;
   try{$("ttBody").innerHTML=await buildTimetableHTML(false)}
   catch(e){$("ttBody").innerHTML=`<p class="no-data">${e.message}</p>`}
 };
 
+/* ============ PROFILE ============ */
 ROUTES.profile=async()=>{
   const u=getUser();
   $("pageTitle").textContent="My Profile";
@@ -522,11 +592,11 @@ ROUTES.profile=async()=>{
   const rooms=await api("/api/rooms/").catch(()=>[]);
   $("content").innerHTML=`
     <div class="card" style="display:flex;align-items:center;gap:22px">
-      <div style="width:90px;height:90px;border-radius:50%;background:linear-gradient(135deg,#1e40af,#3b82f6);color:#fff;display:flex;align-items:center;justify-content:center;font-size:38px;font-weight:800">${(u.username||"U")[0].toUpperCase()}</div>
+      <div style="width:90px;height:90px;border-radius:50%;background:linear-gradient(135deg,#5c6bc0,#3949ab);color:#fff;display:flex;align-items:center;justify-content:center;font-size:38px;font-weight:800">${(u.username||"U")[0].toUpperCase()}</div>
       <div style="flex:1">
         <h2 style="font-size:22px;margin-bottom:4px">${u.username}</h2>
-        <p style="color:#64748b;font-size:13px;margin-bottom:6px"><span class="badge">${u.role}</span></p>
-        <p style="color:#64748b;font-size:13px">${u.email||""}</p>
+        <p style="color:#6b7280;font-size:13px;margin-bottom:6px"><span class="badge">${u.role}</span></p>
+        <p style="color:#6b7280;font-size:13px">${u.email||""}</p>
       </div>
     </div>
     <div class="stats-grid">
@@ -555,9 +625,9 @@ ROUTES.profile=async()=>{
       </div>
     </div>`;
 };
-const infoCard=(l,v)=>`<div style="padding:14px;background:#f8fafc;border-radius:10px;border-left:3px solid #1e40af">
-  <label style="display:block;font-size:11px;text-transform:uppercase;color:#64748b;font-weight:700;margin-bottom:4px">${l}</label>
-  <p style="font-weight:600;color:#0f172a">${v}</p></div>`;
+const infoCard=(l,v)=>`<div style="padding:14px;background:#f3f4f6;border-radius:10px;border-left:3px solid #5c6bc0">
+  <label style="display:block;font-size:11px;text-transform:uppercase;color:#6b7280;font-weight:700;margin-bottom:4px">${l}</label>
+  <p style="font-weight:600;color:#1f2937">${v}</p></div>`;
 
 /* ============ INIT ============ */
 function init(){
@@ -566,11 +636,14 @@ function init(){
     $("authScreen").classList.add("hidden");
     $("appScreen").classList.remove("hidden");
     buildNav();
+    loadRegDepartments();
     const home=u.role==="admin"?"dashboard":u.role==="teacher"?"teacherSchedule":"studentTimetable";
     navigate(home);
   }else{
     $("authScreen").classList.remove("hidden");
     $("appScreen").classList.add("hidden");
+    loadRegDepartments();
+    toggleRoleFields();
   }
 }
 init();
