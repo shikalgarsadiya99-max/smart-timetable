@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr
-from typing import Optional, List
+from typing import Optional
 
 
 # ========== USER ==========
@@ -205,6 +205,23 @@ class ArchivedTimetableResponse(BaseModel):
     semester_label: str
     data: str
     created_at: str
+
+    class Config:
+        from_attributes = True
+
+
+# ========== DEPARTMENT ==========
+class DepartmentCreate(BaseModel):
+    name: str
+    code: str
+    hod: Optional[str] = None
+
+
+class DepartmentResponse(BaseModel):
+    id: int
+    name: str
+    code: str
+    hod: Optional[str] = None
 
     class Config:
         from_attributes = True
